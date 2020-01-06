@@ -26,9 +26,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.util.UnsafeUtil;
 import com.esotericsoftware.kryo.util.Util;
-
-import sun.nio.ch.DirectBuffer;
 
 /** An optimized OutputStream that writes data directly into the off-heap memory. Utility methods are provided for efficiently
  * writing primitive types, arrays of primitive types and strings. It uses @link{sun.misc.Unsafe} to achieve a very good
@@ -100,7 +99,7 @@ public final class UnsafeMemoryOutput extends ByteBufferOutput {
 	}
 
 	private void updateBufferAddress () {
-		bufaddress = ((DirectBuffer)super.niobuffer).address();
+		bufaddress = UnsafeUtil.getAddress(super.niobuffer);
 	}
 
 	/** Writes a 4 byte int. */

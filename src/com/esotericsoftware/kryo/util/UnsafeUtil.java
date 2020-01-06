@@ -24,6 +24,7 @@ import static com.esotericsoftware.minlog.Log.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -48,6 +49,7 @@ public class UnsafeUtil {
 	final static public long longArrayBaseOffset;
 	final static public long shortArrayBaseOffset;
 	final static public long charArrayBaseOffset;
+	final static public long bufferAddressOffset;
 
 	// Constructor to be used for creation of ByteBuffers that use preallocated memory regions
 	static Constructor<? extends ByteBuffer> directByteBufferConstr;
@@ -61,6 +63,7 @@ public class UnsafeUtil {
 		long tmpLongArrayBaseOffset = 0;
 		long tmpShortArrayBaseOffset = 0;
 		long tmpCharArrayBaseOffset = 0;
+		long tmpBufferAddressOffset = 0;
 
 		try {
 			if (!Util.IS_ANDROID) {
@@ -74,6 +77,17 @@ public class UnsafeUtil {
 				tmpFloatArrayBaseOffset = tmpUnsafe.arrayBaseOffset(float[].class);
 				tmpLongArrayBaseOffset = tmpUnsafe.arrayBaseOffset(long[].class);
 				tmpDoubleArrayBaseOffset = tmpUnsafe.arrayBaseOffset(double[].class);
+
+				try {
+					Field address = Buffer.class.getDeclaredField("address");
+					if (address.getType() == long.class) {
+						tmpBufferAddressOffset = tmpUnsafe.objectFieldOffset(address);
+					}
+				} catch (Throwable t) {
+					if (TRACE) {
+						trace("kryo", "Buffer.address is not available.");
+					}
+				}
 			} else {
 				if (TRACE) trace("kryo", "Running on Android platform. Use of sun.misc.Unsafe should be disabled");
 			}
@@ -89,28 +103,34 @@ public class UnsafeUtil {
 		floatArrayBaseOffset = tmpFloatArrayBaseOffset;
 		longArrayBaseOffset = tmpLongArrayBaseOffset;
 		doubleArrayBaseOffset = tmpDoubleArrayBaseOffset;
+		bufferAddressOffset = tmpBufferAddressOffset;
 		_unsafe = tmpUnsafe;
 	}
 
 	static private Method cleanerMethod, cleanMethod;
 	static {
-		try {
-			cleanerMethod = DirectBuffer.class.getMethod("cleaner");
-			cleanerMethod.setAccessible(true);
-			cleanMethod = cleanerMethod.getReturnType().getMethod("clean");
-		} catch (Exception ex) {
-			if (DEBUG) debug("kryo", "No direct ByteBuffer clean method is available.", ex);
-			cleanerMethod = null;
+		if (Util.useBufferReflection) {
+			try {
+				cleanerMethod = Class.forName("sun.nio.ch.DirectBuffer").getMethod("cleaner");
+				cleanerMethod.setAccessible(true);
+				cleanMethod = cleanerMethod.getReturnType().getMethod("clean");
+			} catch (Throwable ex) {
+				ex.printStackTrace();
+				if (DEBUG) debug("kryo", "No direct ByteBuffer clean method is available.", ex);
+				cleanerMethod = null;
+			}
 		}
 	}
 
 	static {
-		ByteBuffer buf = ByteBuffer.allocateDirect(1);
-		try {
-			directByteBufferConstr = buf.getClass().getDeclaredConstructor(long.class, int.class, Object.class);
-			directByteBufferConstr.setAccessible(true);
-		} catch (Exception e) {
-			directByteBufferConstr = null;
+		if (Util.useBufferReflection) {
+			ByteBuffer buf = ByteBuffer.allocateDirect(1);
+			try {
+				directByteBufferConstr = buf.getClass().getDeclaredConstructor(long.class, int.class, Object.class);
+				directByteBufferConstr.setAccessible(true);
+			} catch (Throwable e) {
+				directByteBufferConstr = null;
+			}
 		}
 	}
 
@@ -160,6 +180,15 @@ public class UnsafeUtil {
 		} catch (Exception e) {
 			throw new RuntimeException("Cannot allocate ByteBuffer at a given address: " + address, e);
 		}
+	}
+
+	final static public long getAddress(ByteBuffer byteBuffer) {
+		if (_unsafe != null && bufferAddressOffset != 0) {
+			return _unsafe.getLong(byteBuffer, bufferAddressOffset);
+		} else if (byteBuffer instanceof DirectBuffer) {
+			return ((DirectBuffer) byteBuffer).address();
+		}
+		return 0;
 	}
 
 	/*** Release a direct buffer.

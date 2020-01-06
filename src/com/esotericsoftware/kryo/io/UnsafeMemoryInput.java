@@ -26,7 +26,7 @@ import java.nio.ByteBuffer;
 
 import com.esotericsoftware.kryo.KryoException;
 
-import sun.nio.ch.DirectBuffer;
+import com.esotericsoftware.kryo.util.UnsafeUtil;
 
 /** An optimized InputStream that reads data directly from the off-heap memory. Utility methods are provided for efficiently
  * reading primitive types, arrays of primitive types and strings. It uses @link{sun.misc.Unsafe} to achieve a very good
@@ -96,7 +96,7 @@ public final class UnsafeMemoryInput extends ByteBufferInput {
 	}
 
 	private void updateBufferAddress () {
-		bufaddress = ((DirectBuffer)super.niobuffer).address();
+		bufaddress = UnsafeUtil.getAddress(super.niobuffer);
 	}
 
 	/** Reads a 4 byte int. */

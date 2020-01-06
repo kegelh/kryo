@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Nathan Sweet <misc@n4te.com> */
 public class Util {
 
+	static boolean useBufferReflection = true;
+
 	static public final boolean IS_ANDROID = "Dalvik".equals(System.getProperty("java.vm.name"));
 
 	/** @deprecated Use {@link #IS_ANDROID} instead. */
@@ -178,5 +180,9 @@ public class Util {
 		return (((value >> 0) & 0xff) << 56) | (((value >> 8) & 0xff) << 48) | (((value >> 16) & 0xff) << 40)
 			| (((value >> 24) & 0xff) << 32) | (((value >> 32) & 0xff) << 24) | (((value >> 40) & 0xff) << 16)
 			| (((value >> 48) & 0xff) << 8) | (((value >> 56) & 0xff) << 0);
+	}
+
+	public static void setUseBufferReflection(boolean useBufferReflection) {
+		Util.useBufferReflection = useBufferReflection;
 	}
 }
