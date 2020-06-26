@@ -70,6 +70,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 /** Testdata for serialization compatibility check. */
+@SuppressWarnings("unused")
 public class SerializationCompatTestData {
 
 	static class TestDataJava8 extends TestData {
@@ -111,6 +112,30 @@ public class SerializationCompatTestData {
 			year = Year.of(2016);
 			yearMonth = YearMonth.of(2016, Month.MARCH);
 			period = Period.of(11, 11, 11);
+		}
+	}
+
+	static class TestDataJava11 extends TestData {
+		private List<Integer> emptyImmutableList;
+		private Map<Integer, Integer> emptyImmutableMap;
+		private Set<Integer> emptyImmutableSet;
+		private List<Integer> singleImmutableList;
+		private Map<Integer, Integer> singleImmutableMap;
+		private Set<Integer> singleImmutableSet;
+		private List<Integer> immutableList;
+		private Map<Integer, Integer> immutableMap;
+		private Set<Integer> immutableSet;
+
+		TestDataJava11 () {
+			emptyImmutableList = List.of();
+			emptyImmutableMap = Map.of();
+			emptyImmutableSet = Set.of();
+			singleImmutableList = List.of(42);
+			singleImmutableMap = Map.of(42, 42);
+			singleImmutableSet = Set.of(42);
+			immutableList = List.of(1, 2, 3);
+			immutableMap = Map.of(1, 2, 3, 4);
+			immutableSet = Set.of(1, 2, 3);
 		}
 	}
 
@@ -217,7 +242,7 @@ public class SerializationCompatTestData {
 			_integerArray = new Integer[] {13};
 
 			_date = new Date(42);
-			_calendar = Calendar.getInstance();
+			_calendar = Calendar.getInstance(Locale.ENGLISH);
 			_calendar.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
 			_calendar.set(2009, Calendar.JANUARY, 25, 10, 29, 0);
 			_calendar.set(Calendar.MILLISECOND, 0);

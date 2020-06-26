@@ -20,10 +20,11 @@
 package com.esotericsoftware.kryo;
 
 import static com.esotericsoftware.kryo.ReflectionAssert.*;
-import static java.lang.Integer.parseInt;
+import static java.lang.Integer.*;
 import static org.junit.Assert.*;
 
 import com.esotericsoftware.kryo.SerializationCompatTestData.TestData;
+import com.esotericsoftware.kryo.SerializationCompatTestData.TestDataJava11;
 import com.esotericsoftware.kryo.SerializationCompatTestData.TestDataJava8;
 import com.esotericsoftware.kryo.io.ByteBufferInput;
 import com.esotericsoftware.kryo.io.ByteBufferOutput;
@@ -73,7 +74,6 @@ public class SerializationCompatTest extends KryoTestCase {
 	// Set to true to delete failed test files, then set back to false, set expected bytes, and run again to generate new files.
 	static private final boolean DELETE_FAILED_TEST_FILES = false;
 
-	static private final String ENDIANNESS = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? "le" : "be";
 	static private final int JAVA_VERSION;
 	static {
 		// java.version is e.g. 1.8.0 or 9.0.4
@@ -81,13 +81,13 @@ public class SerializationCompatTest extends KryoTestCase {
 		int[] versions = new int[] {parseInt(strVersions[0]), parseInt(strVersions[1])};
 		JAVA_VERSION = versions[0] > 1 ? versions[0] : versions[1];
 	}
-	static private final int EXPECTED_DEFAULT_SERIALIZER_COUNT = JAVA_VERSION < 8 ? 39 : 57; // Also change
-																															// Kryo#defaultSerializers.
+	static private final int EXPECTED_DEFAULT_SERIALIZER_COUNT = JAVA_VERSION < 11 ? 57 : 67; // Also change Kryo#defaultSerializers.
 	static private final List<TestDataDescription> TEST_DATAS = new ArrayList<>();
 
 	static {
-		TEST_DATAS.add(new TestDataDescription<TestData>("5.0.0", new TestData(), 1940));
-		if (JAVA_VERSION >= 8) TEST_DATAS.add(new TestDataDescription<TestDataJava8>("5.0.0", new TestDataJava8(), 2098));
+		TEST_DATAS.add(new TestDataDescription<>(new TestData(), 1940, 1958));
+		if (JAVA_VERSION >= 8) TEST_DATAS.add(new TestDataDescription<>(new TestDataJava8(), 2098, 2116));
+		if (JAVA_VERSION >= 11) TEST_DATAS.add(new TestDataDescription<>(new TestDataJava11(), 2210, 2238));
 	};
 
 	@Before
@@ -189,7 +189,7 @@ public class SerializationCompatTest extends KryoTestCase {
 
 	private void readAndRunTest (TestDataDescription<?> description, Input in) throws FileNotFoundException {
 		TestData actual = kryo.readObject(in, description.testDataClass());
-		roundTrip(description.length, actual);
+		roundTrip(description.length, description.noGenericsLength, actual);
 		try {
 			assertReflectionEquals(actual, description.testData);
 		} catch (AssertionError e) {
@@ -200,7 +200,7 @@ public class SerializationCompatTest extends KryoTestCase {
 	}
 
 	private void runTestAndWrite (TestDataDescription description, Output out) throws FileNotFoundException {
-		roundTrip(description.length, description.testData);
+		roundTrip(description.length, description.noGenericsLength, description.testData);
 		kryo.writeObject(out, description.testData);
 	}
 
@@ -217,14 +217,14 @@ public class SerializationCompatTest extends KryoTestCase {
 	}
 
 	static private class TestDataDescription<T extends TestData> {
-		private final String kryoVersion;
 		final T testData;
 		final int length;
+		final int noGenericsLength;
 
-		TestDataDescription (String kryoVersion, T testData, int length) {
-			this.kryoVersion = kryoVersion;
+		TestDataDescription(T testData, int length, int noGenericsLength) {
 			this.testData = testData;
 			this.length = length;
+			this.noGenericsLength = noGenericsLength;
 		}
 
 		Class<T> testDataClass () {

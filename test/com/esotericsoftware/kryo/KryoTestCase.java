@@ -36,6 +36,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
@@ -70,6 +71,23 @@ abstract public class KryoTestCase {
 		if (debug && WARN) warn("*** DEBUG TEST ***");
 
 		kryo = new Kryo();
+	}
+
+	/** @param lengthGenerics Pass Integer.MIN_VALUE to disable checking the length for the generic serialization.
+	 * @param lengthNoGenerics Pass Integer.MIN_VALUE to disable checking the length for the non-generic serialization. */
+	public <T> void roundTrip (int lengthGenerics, int lengthNoGenerics, T object1) {
+		roundTrip(lengthGenerics, object1, true);
+		roundTrip(lengthNoGenerics, object1, false);
+	}
+
+	/** @param length Pass Integer.MIN_VALUE to disable checking the length. */
+	private <T> void roundTrip (int length, T object1, boolean optimizedGenerics) {
+		try {
+			kryo.setOptimizedGenerics(optimizedGenerics);
+			roundTrip(length, object1);
+		} finally {
+			kryo.setOptimizedGenerics(true);
+		}
 	}
 
 	/** @param length Pass Integer.MIN_VALUE to disable checking the length. */
@@ -116,8 +134,7 @@ abstract public class KryoTestCase {
 			}
 
 			public Input createInput (byte[] buffer) {
-				ByteBuffer byteBuffer = ByteBuffer.allocateDirect(buffer.length);
-				byteBuffer.put(buffer).flip();
+				ByteBuffer byteBuffer = allocateByteBuffer(buffer);
 				return new ByteBufferInput(byteBuffer);
 			}
 		});
@@ -162,13 +179,19 @@ abstract public class KryoTestCase {
 			}
 
 			public Input createInput (byte[] buffer) {
-				ByteBuffer byteBuffer = ByteBuffer.allocateDirect(buffer.length);
-				byteBuffer.put(buffer).flip();
+				ByteBuffer byteBuffer = allocateByteBuffer(buffer);
 				return new UnsafeByteBufferInput(byteBuffer);
 			}
 		});
 
 		return object2;
+	}
+
+	private ByteBuffer allocateByteBuffer(byte[] buffer) {
+		ByteBuffer byteBuffer = ByteBuffer.allocateDirect(buffer.length);
+		byteBuffer.put(buffer);
+		((Buffer) byteBuffer).flip();
+		return byteBuffer;
 	}
 
 	/** @param length Pass Integer.MIN_VALUE to disable checking the length. */
@@ -186,7 +209,6 @@ abstract public class KryoTestCase {
 		if (debug) System.out.println();
 
 		// Test input from stream, large buffer.
-		byte[] out = outStream.toByteArray();
 		input = sf.createInput(new ByteArrayInputStream(outStream.toByteArray()), 4096);
 		object2 = kryo.readClassAndObject(input);
 		doAssertEquals(object1, object2);

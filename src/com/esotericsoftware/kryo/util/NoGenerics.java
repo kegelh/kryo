@@ -1,15 +1,15 @@
 /* Copyright (c) 2008-2018, Nathan Sweet
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
  * conditions are met:
- * 
+ *
  * - Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
  * disclaimer in the documentation and/or other materials provided with the distribution.
  * - Neither the name of Esoteric Software nor the names of its contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING,
  * BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
  * SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
@@ -19,58 +19,46 @@
 
 package com.esotericsoftware.kryo.util;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.ReferenceResolver;
+import java.lang.reflect.TypeVariable;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
+/** Implementation of {@link Generics} that does not store generic type arguments and actual classes for type variables. */
+public final class NoGenerics implements Generics {
 
-/** Uses an {@link IdentityHashMap} to track objects that have already been written. This can handle a graph with any number of
- * objects, but is slightly slower than {@link MapReferenceResolver} because IdentityHashMap allocates on put and slower slower
- * than {@link ListReferenceResolver} for graphs with few objects.
- * @author Nathan Sweet */
-public class HashMapReferenceResolver implements ReferenceResolver {
-	protected Kryo kryo;
-	protected final IdentityHashMap<Object, Integer> writtenObjects = new IdentityHashMap();
-	protected final ArrayList readObjects = new ArrayList();
+	public static final Generics INSTANCE = new NoGenerics();
 
-	public void setKryo (Kryo kryo) {
-		this.kryo = kryo;
+	private NoGenerics () {
+		// singleton
 	}
 
-	public int addWrittenObject (Object object) {
-		int id = writtenObjects.size();
-		writtenObjects.put(object, id);
-		return id;
+	@Override
+	public void pushGenericType (GenericType fieldType) {
 	}
 
-	public int getWrittenId (Object object) {
-		Integer id = writtenObjects.get(object);
-		if (id == null) return -1;
-		return id;
+	@Override
+	public void popGenericType () {
 	}
 
-	public int nextReadId (Class type) {
-		int id = readObjects.size();
-		readObjects.add(null);
-		return id;
+	@Override
+	public GenericType[] nextGenericTypes () {
+		return null;
 	}
 
-	public void setReadObject (int id, Object object) {
-		readObjects.set(id, object);
+	@Override
+	public Class nextGenericClass () {
+		return null;
 	}
 
-	public Object getReadObject (Class type, int id) {
-		return readObjects.get(id);
+	@Override
+	public int pushTypeVariables (GenericsHierarchy hierarchy, GenericType[] args) {
+		return 0;
 	}
 
-	public void reset () {
-		readObjects.clear();
-		writtenObjects.clear();
+	@Override
+	public void popTypeVariables (int count) {
 	}
 
-	/** Returns false for all primitive wrappers and enums. */
-	public boolean useReferences (Class type) {
-		return !Util.isWrapperClass(type) && !Util.isEnum(type);
+	@Override
+	public Class resolveTypeVariable (TypeVariable typeVariable) {
+		return null;
 	}
 }
